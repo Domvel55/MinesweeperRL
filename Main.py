@@ -144,6 +144,6 @@ if __name__ == '__main__':
     generateNumbers(board)
 
     #app = pq.QApplication([sys.argv])
-    window = Window()
+    #window = Window()
     #window.setBoard()
     #sys.exit(app.exec_())
