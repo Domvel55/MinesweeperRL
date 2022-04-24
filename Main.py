@@ -3,24 +3,23 @@ import random
 import sys
 
 
-class CustomButton(pq.QPushButton):
+class CustomButton(pq.QPushButton) :
 
     x_val = None
     y_val = None
     bombs_close_by = 0
     temp_bombs = None
     isBomb = None
-
-    def __init__(self, x, y, window, isBomb):
+    stateString = ''
+    loc = None
+    def __init__(self, x, y, window, isBomb,stateString):
         super().__init__('{}_{}'.format(x+1, y+1), window)
 
         self.x_val = x
         self.y_val = y
+        self.neighbors = self.getNeighbors()
         self.isBomb = isBomb
-
-        if self.isBomb:
-            super().setText(("Bomb"))
-
+        self.stateString = stateString
         super().clicked.connect(self.clicked)
         self.move(x*40, y*40)
         self.setMinimumSize(40, 40)
@@ -29,32 +28,74 @@ class CustomButton(pq.QPushButton):
         self.show()
 
     def clicked(self):
-        super().setText('bitch')
+        self.clickFunction(clicked = True, explored = [])
         print('Bomb: {} X_Y: {}_{}'.format(self.isBomb, self.x_val, self.y_val))
 
-
+    #Recursion with Multipath Pruning
+    def clickFunction(self,clicked,explored):
+        stateString = self.stateString
+        if stateString != 'b' and stateString != 'w':
+            super().setText(self.stateString)
+            return
+        elif stateString == 'b':
+            if clicked:
+                # EndGame code here
+                super().setText(self.stateString)
+                window.endGame()
+        else:
+            super().setText(self.stateString)
+            for neighbor in self.neighbors:
+                print(window.buttons[neighbor],explored)
+                if neighbor not in explored:
+                    explored.append(neighbor)
+                    window.buttons[neighbor].clickFunction(clicked = False,explored = explored)
+    #GetNeighbors function to find nearby blocks
+    def getNeighbors(self):
+        board_size = window.board_size
+        i = (self.y_val * board_size + self.x_val)
+        coords = [i + -board_size - 1, i + -board_size, i + -board_size + 1, i -1, i + 1, i + board_size - 1, i + board_size, i + board_size + 1]
+        if i == 0:
+            return [coords[4], coords[6], coords[7]]
+        elif i < board_size - 1:
+            return [coords[3], coords[4], coords[5],coords[6], coords[7]]
+        elif i == board_size - 1:
+            return [coords[3], coords[5], coords[6]]
+        elif i == board_size * (board_size - 1):
+            return[coords[1], coords[2], coords[4]]
+        elif i == board_size * board_size - 1:
+            return[coords[0], coords[1], coords[3]]
+        elif i % board_size == 0:
+            return [coords[1], coords[2], coords[4], coords[6], coords[7]]
+        elif i % board_size == board_size-1:
+            print("5", i)
+            return [coords[0], coords[1], coords[3], coords[5], coords[6]]
+        elif i > board_size * (board_size - 1) and i < board_size ** 2 - 1:
+            print("8", i)
+            return [coords[0], coords[1], coords[2], coords[3], coords[4]]
+        else:
+            return coords
 class Window(pq.QMainWindow):
 
     buttons = []
-    board_size = 9
+    board_size = 10
     bombsOnBoard = 10
 
     def __init__(self):
         super().__init__()
-
+        self.board = self.generateBoardString(self.board_size, self.bombsOnBoard)
         self.setWindowTitle('Dom and Steven\'s Minesweeper')
         self.setMinimumSize(self.board_size*40, self.board_size*40)
         self.show()
 
     def setBoard(self):
-
         temp_layer = []
 
         for y in range(self.board_size):
             for x in range(self.board_size):
-                temp = CustomButton(x, y, self, False)
-                temp_layer.append(temp)
-            self.buttons.append(temp_layer)
+                state = (self.board[(y * self.board_size + x)])
+                temp = CustomButton(x, y, self, False,stateString=state)
+                #temp_layer.append(temp)
+                self.buttons.append(temp)
 
         #self.setBombs()
         #self.count3x3()
@@ -103,122 +144,93 @@ class Window(pq.QMainWindow):
                 square.temp_bombs = temp_bombs
                 square.setText(str(temp_count))
 
+    def endGame(self):
+        print("You Suck")
+        self.setBoard()
+    def generateBoardString(self,board_size, num_bombs):
+        temp_board = ''
+        bombs = []
 
-def gerenateBoardString(board_size, num_bombs):
-    temp_board = ''
-    bombs = []
+        for bomb in range(num_bombs):
+            spot = random.randint(0, board_size**2 - 1)
+            while spot in bombs:
+                spot = random.randint(0, board_size ** 2 - 1)
+            bombs.append(spot)
+        for i in range(0, board_size**2):
+            if i in bombs:
+                temp_board += 'b'
+            elif i not in bombs:
+                temp_board += 'w'
+            #if i % board_size == 0:
+            #    temp_board += '/'
 
-    for bomb in range(num_bombs):
-        spot = random.randint(0, board_size**2 - 1)
-        while spot in bombs:
-            spot = random.randint(0, board_size ** 2 - 1)
-        bombs.append(spot)
-
-    for i in range(1, board_size**2+1):
-        if i in bombs:
-            temp_board += 'b'
-        elif i not in bombs:
-            temp_board += 'w'
-        #if i % board_size == 0:
-        #    temp_board += '/'
-
-    return generateNumbers(list(temp_board),board_size,bombs)
-
-
-def generateNumbers(board,board_size,bombs):
+        return self.generateNumbers(list(temp_board),board_size,bombs)
 
 
-    temp_board = board
-    print(bombs)
-    coords = [-board_size-1, -board_size, -board_size+1, -1, 1, board_size-1, board_size, board_size+1]
-    #First check for conditions where original rules don't apply
-    for i in bombs:
-        if i == 0:
-            print("1",i)
-            setHelper(board, i + coords[4])
-            setHelper(board, i + coords[6])
-            setHelper(board, i + coords[7])
-        elif i < board_size:
-            print("2",i)
-            setHelper(board, i + coords[3])
-            setHelper(board, i + coords[4])
-            setHelper(board, i + coords[5])
-            setHelper(board, i + coords[6])
-            setHelper(board, i + coords[7])
-        elif i == board_size:
-            print("3",i)
-            setHelper(board, i + coords[3])
-            setHelper(board, i + coords[5])
-            setHelper(board, i + coords[6])
-        elif i == board_size * (board_size - 1):
-            print("6",i)
-            setHelper(board, i + coords[1])
-            setHelper(board, i + coords[2])
-            setHelper(board, i + coords[4])
-        elif i == board_size ** 2:
-            print("7",i)
-            setHelper(board, i + coords[0])
-            setHelper(board, i + coords[1])
-            setHelper(board, i + coords[3])
-        elif i > board_size * (board_size-1) and i < board_size**2:
-            print("8",i)
-            setHelper(board, i + coords[0])
-            setHelper(board, i + coords[1])
-            setHelper(board, i + coords[2])
-            setHelper(board, i + coords[3])
-            setHelper(board, i + coords[4])
-        elif i % board_size == 0:
-            print("4",i)
-            setHelper(board, i + coords[0])
-            setHelper(board, i + coords[1])
-            setHelper(board, i + coords[3])
-            setHelper(board, i + coords[5])
-            setHelper(board, i + coords[6])
-        elif i % board_size == 1:
-            print("5",i)
-            setHelper(board, i + coords[1])
-            setHelper(board, i + coords[2])
-            setHelper(board, i + coords[4])
-            setHelper(board, i + coords[6])
-            setHelper(board, i + coords[7])
-        else:
-            print("9", i)
-            setHelper(board, i + coords[0])
-            setHelper(board, i + coords[1])
-            setHelper(board, i + coords[2])
-            setHelper(board, i + coords[3])
-            setHelper(board, i + coords[4])
-            setHelper(board, i + coords[5])
-            setHelper(board, i + coords[6])
-            setHelper(board, i + coords[7])
+    def generateNumbers(self,board,board_size,bombs):
+        """
+                0 1 2
+                3 0 4
+                5 6 7
+                """
+        temp_board = board
 
-    return board
+        coords = [-board_size-1, -board_size, -board_size+1, -1, 1, board_size-1, board_size, board_size+1]
+        print(coords)
+        #First check for conditions where original rules don't apply
+        for num in bombs:
+            i = num
+            if i == 0:
+                print("1", i)
+                self.setHelper(board, i, [coords[4], coords[6], coords[7]])
+            elif i < board_size - 1:
+                print("2", i)
+                self.setHelper(board, i, [coords[3], coords[4], coords[5],coords[6], coords[7]])
+            elif i == board_size - 1:
+                print("3",i)
+                self.setHelper(board, i, [coords[3], coords[5], coords[6]])
+            elif i == board_size * (board_size - 1):
+                print("4",i)
+                self.setHelper(board, i, [coords[1], coords[2], coords[4]])
+            elif i == board_size * board_size - 1:
+                print("6",i)
+                self.setHelper(board, i, [coords[0], coords[1], coords[3]])
+            elif i % board_size == 0:
+                self.setHelper(board, i, [coords[1], coords[2], coords[4], coords[6], coords[7]])
+            elif i % board_size == board_size-1:
+                print("5", i)
+                self.setHelper(board, i, [coords[0], coords[1], coords[3], coords[5], coords[6]])
+            elif i > board_size * (board_size - 1) and i < board_size ** 2 - 1:
+                print("8", i)
+                self.setHelper(board, i, [coords[0], coords[1], coords[2], coords[3], coords[4]])
+            else:
+                print("9", i)
+                self.setHelper(board, i, coords)
+        return board
 
-def setHelper(board,loc):
-    if board[loc]  != 'w' and board[loc] != 'b':
-        num = int(board[loc]) + 1
-        board[loc] = num
-    else:
-        board[loc] = 1
-
+    def setHelper(self,board,num,locs):
+        for location in locs:
+            loc = num + location
+            if board[loc] == 'b':
+                board[loc] = 'b'
+            elif board[loc] != 'w':
+                number = int(board[loc]) + 1
+                board[loc] = str(number)
+            else:
+                board[loc] = '1'
+    def printAnswerKey(self):
+        for i in range(0, self.board_size):
+            print(self.board[(self.board_size * i):(self.board_size * i + self.board_size)])
 if __name__ == '__main__':
-
-    board = gerenateBoardString(10, 10)
+    """
+    board_size = 10
+    board = gerenateBoardString(board_size, 10)
     print(len(board))
-    print(board[0:10])
-    print(board[10:20])
-    print(board[30:40])
-    print(board[40:50])
-    print(board[50:60])
-    print(board[60:70])
-    print(board[70:80])
-    print(board[80:90])
-    print(board[90:100])
-
-
-
-
-    #app = pq.QApplication([sys.argv])
-    #window = Window()
-    #window.setBoard()
-    #sys.exit(app.exec_())
+    for i in range(0,board_size):
+        print(board[(board_size * i):(board_size * i + board_size)])
+    """
+    app = pq.QApplication([sys.argv])
+    window = Window()
+    window.setBoard()
+    window.printAnswerKey()
+    sys.exit(app.exec_())
