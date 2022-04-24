@@ -77,9 +77,9 @@ class Window(pq.QMainWindow):
     def count3x3(self):
 
         """
-        10 9 8
-        1 0 1
-        8 9 10
+        0 1 2
+        3 0 4
+        5 6 7
         """
 
         coords = [-10, -9, -8, -1, 1, 8, 9, 10]
@@ -109,9 +109,9 @@ def gerenateBoardString(board_size, num_bombs):
     bombs = []
 
     for bomb in range(num_bombs):
-        spot = random.randint(0, board_size**2)
+        spot = random.randint(0, board_size**2 - 1)
         while spot in bombs:
-            spot = random.randint(0, board_size ** 2)
+            spot = random.randint(0, board_size ** 2 - 1)
         bombs.append(spot)
 
     for i in range(1, board_size**2+1):
@@ -119,29 +119,104 @@ def gerenateBoardString(board_size, num_bombs):
             temp_board += 'b'
         elif i not in bombs:
             temp_board += 'w'
-        if i % board_size == 0:
-            temp_board += '/'
-    return temp_board[:-1]
+        #if i % board_size == 0:
+        #    temp_board += '/'
+
+    return generateNumbers(list(temp_board),board_size,bombs)
 
 
-def generateNumbers(board):
+def generateNumbers(board,board_size,bombs):
+
+
     temp_board = board
-
-    board_size = len(board.split('/'))
+    print(bombs)
     coords = [-board_size-1, -board_size, -board_size+1, -1, 1, board_size-1, board_size, board_size+1]
+    #First check for conditions where original rules don't apply
+    for i in bombs:
+        if i == 0:
+            print("1",i)
+            setHelper(board, i + coords[4])
+            setHelper(board, i + coords[6])
+            setHelper(board, i + coords[7])
+        elif i < board_size:
+            print("2",i)
+            setHelper(board, i + coords[3])
+            setHelper(board, i + coords[4])
+            setHelper(board, i + coords[5])
+            setHelper(board, i + coords[6])
+            setHelper(board, i + coords[7])
+        elif i == board_size:
+            print("3",i)
+            setHelper(board, i + coords[3])
+            setHelper(board, i + coords[5])
+            setHelper(board, i + coords[6])
+        elif i == board_size * (board_size - 1):
+            print("6",i)
+            setHelper(board, i + coords[1])
+            setHelper(board, i + coords[2])
+            setHelper(board, i + coords[4])
+        elif i == board_size ** 2:
+            print("7",i)
+            setHelper(board, i + coords[0])
+            setHelper(board, i + coords[1])
+            setHelper(board, i + coords[3])
+        elif i > board_size * (board_size-1) and i < board_size**2:
+            print("8",i)
+            setHelper(board, i + coords[0])
+            setHelper(board, i + coords[1])
+            setHelper(board, i + coords[2])
+            setHelper(board, i + coords[3])
+            setHelper(board, i + coords[4])
+        elif i % board_size == 0:
+            print("4",i)
+            setHelper(board, i + coords[0])
+            setHelper(board, i + coords[1])
+            setHelper(board, i + coords[3])
+            setHelper(board, i + coords[5])
+            setHelper(board, i + coords[6])
+        elif i % board_size == 1:
+            print("5",i)
+            setHelper(board, i + coords[1])
+            setHelper(board, i + coords[2])
+            setHelper(board, i + coords[4])
+            setHelper(board, i + coords[6])
+            setHelper(board, i + coords[7])
+        else:
+            print("9", i)
+            setHelper(board, i + coords[0])
+            setHelper(board, i + coords[1])
+            setHelper(board, i + coords[2])
+            setHelper(board, i + coords[3])
+            setHelper(board, i + coords[4])
+            setHelper(board, i + coords[5])
+            setHelper(board, i + coords[6])
+            setHelper(board, i + coords[7])
 
+    return board
 
-
-    return temp_board
-
+def setHelper(board,loc):
+    if board[loc]  != 'w' and board[loc] != 'b':
+        num = int(board[loc]) + 1
+        board[loc] = num
+    else:
+        board[loc] = 1
 
 if __name__ == '__main__':
 
-    board = gerenateBoardString(15, 10)
-    print(board)
-    for row in board.split('/'):
-        print(row)
-    generateNumbers(board)
+    board = gerenateBoardString(10, 10)
+    print(len(board))
+    print(board[0:10])
+    print(board[10:20])
+    print(board[30:40])
+    print(board[40:50])
+    print(board[50:60])
+    print(board[60:70])
+    print(board[70:80])
+    print(board[80:90])
+    print(board[90:100])
+
+
+
 
     #app = pq.QApplication([sys.argv])
     #window = Window()
