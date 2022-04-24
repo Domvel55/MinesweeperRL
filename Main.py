@@ -45,7 +45,7 @@ class CustomButton(pq.QPushButton) :
         else:
             super().setText(self.stateString)
             for neighbor in self.neighbors:
-                print(window.buttons[neighbor],explored)
+                #print(window.buttons[neighbor],explored)
                 if neighbor not in explored:
                     explored.append(neighbor)
                     window.buttons[neighbor].clickFunction(clicked = False,explored = explored)
@@ -89,14 +89,18 @@ class Window(pq.QMainWindow):
 
     def setBoard(self):
         temp_layer = []
-
         for y in range(self.board_size):
             for x in range(self.board_size):
                 state = (self.board[(y * self.board_size + x)])
                 temp = CustomButton(x, y, self, False,stateString=state)
                 #temp_layer.append(temp)
                 self.buttons.append(temp)
-
+    def resetBoard(self):
+        self.board = self.generateBoardString(self.board_size,self.bombsOnBoard)
+        self.printAnswerKey()
+        for i in range(0,len(self.buttons)):
+            self.buttons[i].setText("")
+            self.buttons[i].stateString = self.board[i]
         #self.setBombs()
         #self.count3x3()
 
@@ -146,7 +150,7 @@ class Window(pq.QMainWindow):
 
     def endGame(self):
         print("You Suck")
-        self.setBoard()
+        self.resetBoard()
     def generateBoardString(self,board_size, num_bombs):
         temp_board = ''
         bombs = []
