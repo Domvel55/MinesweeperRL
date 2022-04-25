@@ -2,9 +2,10 @@ import PyQt5.QtWidgets as pq
 import random
 import sys
 
+from PyQt5 import QtGui, QtCore
 
-class CustomButton(pq.QPushButton) :
 
+class CustomButton(pq.QPushButton):
     x_val = None
     y_val = None
     bombs_close_by = 0
@@ -12,30 +13,54 @@ class CustomButton(pq.QPushButton) :
     isBomb = None
     stateString = ''
     loc = None
-    def __init__(self, x, y, window, isBomb,stateString):
-        super().__init__('{}_{}'.format(x+1, y+1), window)
+    flagged = False
+    num_colors = {'1': 'blue', '2': 'green', '3': 'maroon', '4': 'purple', '5': 'red', '6': 'orange', '7': 'brown',
+                  '8': 'gray'}
 
+    def __init__(self, x, y, window, isBomb, stateString):
+        # super().__init__('{}_{}'.format(x+1, y+1), window)
+        super().__init__('', window)
+
+        # Basic Button Variables
         self.x_val = x
         self.y_val = y
         self.neighbors = self.getNeighbors()
         self.isBomb = isBomb
         self.stateString = stateString
-        super().clicked.connect(self.clicked)
-        self.move(x*40, y*40)
+
+        # Button's placement
+
+        self.move(x * 40, y * 40)
         self.setMinimumSize(40, 40)
         self.setMaximumSize(40, 40)
-        self.setStyleSheet("border :2px solid black;")
+        self.setStyleSheet("border :1px solid black;")
+
+        # Button's Commands
+        super().clicked.connect(self.clicked)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.handleRightClick)
         self.show()
 
-    def clicked(self):
-        self.clickFunction(clicked = True, explored = [])
-        print('Bomb: {} X_Y: {}_{}'.format(self.isBomb, self.x_val, self.y_val))
+    def handleRightClick(self):
+        if self.flagged:
+            self.setIcon(QtGui.QIcon())
+            self.flagged = False
+        else:
+            self.setIconSize(QtCore.QSize(40, 40))
+            self.setIcon(QtGui.QIcon('Images/Flag.png'))
+            self.flagged = True
 
-    #Recursion with Multipath Pruning
-    def clickFunction(self,clicked,explored):
+    def clicked(self):
+        if not self.flagged:
+            self.clickFunction(clicked=True, explored=[])
+        # print('Bomb: {} X_Y: {}_{}'.format(self.isBomb, self.x_val, self.y_val))
+
+    # Recursion with Multipath Pruning
+    def clickFunction(self, clicked, explored):
         stateString = self.stateString
         if stateString != 'b' and stateString != 'w':
             super().setText(self.stateString)
+            super().setStyleSheet('color : {};'.format(self.num_colors[self.stateString]))
             return
         elif stateString == 'b':
             if clicked:
@@ -43,48 +68,54 @@ class CustomButton(pq.QPushButton) :
                 super().setText(self.stateString)
                 window.endGame()
         else:
-            super().setText(self.stateString)
+            super().setText('')
+            super().setStyleSheet('color : black;')
             for neighbor in self.neighbors:
-                #print(window.buttons[neighbor],explored)
+                # print(window.buttons[neighbor],explored)
                 if neighbor not in explored:
                     explored.append(neighbor)
-                    window.buttons[neighbor].clickFunction(clicked = False,explored = explored)
-    #GetNeighbors function to find nearby blocks
+                    window.buttons[neighbor].clickFunction(clicked=False, explored=explored)
+
+    # GetNeighbors function to find nearby blocks
     def getNeighbors(self):
         board_size = window.board_size
         i = (self.y_val * board_size + self.x_val)
-        coords = [i + -board_size - 1, i + -board_size, i + -board_size + 1, i -1, i + 1, i + board_size - 1, i + board_size, i + board_size + 1]
+        coords = [i + -board_size - 1, i + -board_size, i + -board_size + 1, i - 1, i + 1, i + board_size - 1,
+                  i + board_size, i + board_size + 1]
         if i == 0:
             return [coords[4], coords[6], coords[7]]
         elif i < board_size - 1:
-            return [coords[3], coords[4], coords[5],coords[6], coords[7]]
+            return [coords[3], coords[4], coords[5], coords[6], coords[7]]
         elif i == board_size - 1:
             return [coords[3], coords[5], coords[6]]
         elif i == board_size * (board_size - 1):
-            return[coords[1], coords[2], coords[4]]
+            return [coords[1], coords[2], coords[4]]
         elif i == board_size * board_size - 1:
-            return[coords[0], coords[1], coords[3]]
+            return [coords[0], coords[1], coords[3]]
         elif i % board_size == 0:
             return [coords[1], coords[2], coords[4], coords[6], coords[7]]
-        elif i % board_size == board_size-1:
-            print("5", i)
+        elif i % board_size == board_size - 1:
+            # print("5", i)
             return [coords[0], coords[1], coords[3], coords[5], coords[6]]
         elif i > board_size * (board_size - 1) and i < board_size ** 2 - 1:
-            print("8", i)
+            # print("8", i)
             return [coords[0], coords[1], coords[2], coords[3], coords[4]]
         else:
             return coords
-class Window(pq.QMainWindow):
 
+
+class Window(pq.QMainWindow):
     buttons = []
-    board_size = 10
-    bombsOnBoard = 10
+    board_size = 15
+    bombsOnBoard = 25
+    score = 0
+    flags = bombsOnBoard
 
     def __init__(self):
         super().__init__()
         self.board = self.generateBoardString(self.board_size, self.bombsOnBoard)
         self.setWindowTitle('Dom and Steven\'s Minesweeper')
-        self.setMinimumSize(self.board_size*40, self.board_size*40)
+        self.setMinimumSize(self.board_size * 50, self.board_size * 40)
         self.show()
 
     def setBoard(self):
@@ -92,17 +123,24 @@ class Window(pq.QMainWindow):
         for y in range(self.board_size):
             for x in range(self.board_size):
                 state = (self.board[(y * self.board_size + x)])
-                temp = CustomButton(x, y, self, False,stateString=state)
-                #temp_layer.append(temp)
+                temp = CustomButton(x, y, self, False, stateString=state)
+                # temp_layer.append(temp)
                 self.buttons.append(temp)
+
+        temp = pq.QLabel('Score', self)
+        temp.setGeometry(self.board_size * 41, 0, 100, 100)
+        temp.show()
+
     def resetBoard(self):
-        self.board = self.generateBoardString(self.board_size,self.bombsOnBoard)
+        self.board = self.generateBoardString(self.board_size, self.bombsOnBoard)
         self.printAnswerKey()
-        for i in range(0,len(self.buttons)):
+        for i in range(0, len(self.buttons)):
             self.buttons[i].setText("")
+            self.buttons[i].setStyleSheet("border :1px solid black;")
             self.buttons[i].stateString = self.board[i]
-        #self.setBombs()
-        #self.count3x3()
+            self.buttons[i].setIcon(QtGui.QIcon())
+        # self.setBombs()
+        # self.count3x3()
 
     def setBombs(self):
 
@@ -110,10 +148,10 @@ class Window(pq.QMainWindow):
         bombsLeft = self.bombsOnBoard
 
         for bomb in range(self.bombsOnBoard):
-            index = int(random.uniform(0, len(available)*self.board_size))+1
+            index = int(random.uniform(0, len(available) * self.board_size)) + 1
             row = int(index / 9)
             column = int(index % 9)
-            temp = available[row-1][column-1]
+            temp = available[row - 1][column - 1]
             temp.isBomb = True
             temp.setText('Bomb')
             available[row].remove(temp)
@@ -139,7 +177,7 @@ class Window(pq.QMainWindow):
                 index = self.buttons.index(square)
                 for i in coords:
                     try:
-                        if self.buttons[index+i].isBomb:
+                        if self.buttons[index + i].isBomb:
                             temp_count += 1
                             temp_bombs.append(i)
                     except:
@@ -151,27 +189,27 @@ class Window(pq.QMainWindow):
     def endGame(self):
         print("You Suck")
         self.resetBoard()
-    def generateBoardString(self,board_size, num_bombs):
+
+    def generateBoardString(self, board_size, num_bombs):
         temp_board = ''
         bombs = []
 
         for bomb in range(num_bombs):
-            spot = random.randint(0, board_size**2 - 1)
+            spot = random.randint(0, board_size ** 2 - 1)
             while spot in bombs:
                 spot = random.randint(0, board_size ** 2 - 1)
             bombs.append(spot)
-        for i in range(0, board_size**2):
+        for i in range(0, board_size ** 2):
             if i in bombs:
                 temp_board += 'b'
             elif i not in bombs:
                 temp_board += 'w'
-            #if i % board_size == 0:
+            # if i % board_size == 0:
             #    temp_board += '/'
 
-        return self.generateNumbers(list(temp_board),board_size,bombs)
+        return self.generateNumbers(list(temp_board), board_size, bombs)
 
-
-    def generateNumbers(self,board,board_size,bombs):
+    def generateNumbers(self, board, board_size, bombs):
         """
                 0 1 2
                 3 0 4
@@ -179,40 +217,40 @@ class Window(pq.QMainWindow):
                 """
         temp_board = board
 
-        coords = [-board_size-1, -board_size, -board_size+1, -1, 1, board_size-1, board_size, board_size+1]
-        print(coords)
-        #First check for conditions where original rules don't apply
+        coords = [-board_size - 1, -board_size, -board_size + 1, -1, 1, board_size - 1, board_size, board_size + 1]
+        # print(coords)
+        # First check for conditions where original rules don't apply
         for num in bombs:
             i = num
             if i == 0:
-                print("1", i)
+                # print("1", i)
                 self.setHelper(board, i, [coords[4], coords[6], coords[7]])
             elif i < board_size - 1:
-                print("2", i)
-                self.setHelper(board, i, [coords[3], coords[4], coords[5],coords[6], coords[7]])
+                # print("2", i)
+                self.setHelper(board, i, [coords[3], coords[4], coords[5], coords[6], coords[7]])
             elif i == board_size - 1:
-                print("3",i)
+                # print("3",i)
                 self.setHelper(board, i, [coords[3], coords[5], coords[6]])
             elif i == board_size * (board_size - 1):
-                print("4",i)
+                # print("4",i)
                 self.setHelper(board, i, [coords[1], coords[2], coords[4]])
             elif i == board_size * board_size - 1:
-                print("6",i)
+                # print("6",i)
                 self.setHelper(board, i, [coords[0], coords[1], coords[3]])
             elif i % board_size == 0:
                 self.setHelper(board, i, [coords[1], coords[2], coords[4], coords[6], coords[7]])
-            elif i % board_size == board_size-1:
-                print("5", i)
+            elif i % board_size == board_size - 1:
+                # print("5", i)
                 self.setHelper(board, i, [coords[0], coords[1], coords[3], coords[5], coords[6]])
             elif i > board_size * (board_size - 1) and i < board_size ** 2 - 1:
-                print("8", i)
+                # print("8", i)
                 self.setHelper(board, i, [coords[0], coords[1], coords[2], coords[3], coords[4]])
             else:
-                print("9", i)
+                # print("9", i)
                 self.setHelper(board, i, coords)
         return board
 
-    def setHelper(self,board,num,locs):
+    def setHelper(self, board, num, locs):
         for location in locs:
             loc = num + location
             if board[loc] == 'b':
@@ -222,9 +260,12 @@ class Window(pq.QMainWindow):
                 board[loc] = str(number)
             else:
                 board[loc] = '1'
+
     def printAnswerKey(self):
         for i in range(0, self.board_size):
             print(self.board[(self.board_size * i):(self.board_size * i + self.board_size)])
+
+
 if __name__ == '__main__':
     """
     board_size = 10
